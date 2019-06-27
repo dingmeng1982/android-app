@@ -88,22 +88,10 @@ class VerificationFragment : BaseFragment() {
         arguments!!.getString(ARGS_PIN)
     }
 
-    private lateinit var recaptchaView: RecaptchaView
+    private var recaptchaView: RecaptchaView? = null
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val parent = inflater.inflate(R.layout.fragment_verification, container, false) as ViewGroup
-        recaptchaView = RecaptchaView(requireContext(), object : RecaptchaView.Callback {
-            override fun onStop() {
-                hideLoading()
-            }
-
-            override fun onPostToken(value: String) {
-                sendVerification(value)
-            }
-        })
-        parent.addView(recaptchaView.webView, MATCH_PARENT, MATCH_PARENT)
-        return parent
-    }
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
+        inflater.inflate(R.layout.fragment_verification, container, false) as ViewGroup
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -126,7 +114,7 @@ class VerificationFragment : BaseFragment() {
     }
 
     override fun onBackPressed(): Boolean {
-        if (recaptchaView.isVisible()) {
+        if (recaptchaView?.isVisible() == true) {
             hideLoading()
             return true
         }
@@ -258,7 +246,7 @@ class VerificationFragment : BaseFragment() {
         verification_next_fab.hide()
         verification_next_fab.visibility = GONE
         verification_cover.visibility = GONE
-        recaptchaView.webView.visibility = GONE
+        recaptchaView?.webView?.visibility = GONE
     }
 
     private fun sendVerification(gRecaptchaResponse: String? = null) {
@@ -272,7 +260,7 @@ class VerificationFragment : BaseFragment() {
             .autoDisposable(stopScope).subscribe({ r: MixinResponse<VerificationResponse> ->
                 if (!r.isSuccess) {
                     if (r.errorCode == NEED_RECAPTCHA) {
-                        recaptchaView.loadRecaptcha()
+                        initAndLoadRecaptcha()
                     } else {
                         hideLoading()
                         ErrorHandler.handleMixinError(r.errorCode)
@@ -285,8 +273,22 @@ class VerificationFragment : BaseFragment() {
             }, { t: Throwable ->
                 handleError(t)
                 verification_next_fab.visibility = GONE
-                recaptchaView.webView.visibility = GONE
+                recaptchaView?.webView?.visibility = GONE
             })
+    }
+
+    private fun initAndLoadRecaptcha() {
+        recaptchaView = RecaptchaView(requireContext(), object : RecaptchaView.Callback {
+            override fun onStop() {
+                hideLoading()
+            }
+
+            override fun onPostToken(value: String) {
+                sendVerification(value)
+            }
+        })
+        (view as ViewGroup).addView(recaptchaView?.webView, MATCH_PARENT, MATCH_PARENT)
+        recaptchaView?.loadRecaptcha()
     }
 
     private fun startCountDown() {
