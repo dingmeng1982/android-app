@@ -3,9 +3,7 @@ package one.mixin.android.repository
 import android.annotation.SuppressLint
 import androidx.lifecycle.LiveData
 import io.reactivex.Observable
-import java.io.IOException
-import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import one.mixin.android.api.request.ConversationRequest
@@ -32,6 +30,9 @@ import one.mixin.android.vo.MessageItem
 import one.mixin.android.vo.MessageMinimal
 import one.mixin.android.vo.Participant
 import one.mixin.android.vo.SearchMessageItem
+import java.io.IOException
+import javax.inject.Inject
+import javax.inject.Singleton
 
 @Singleton
 class ConversationRepository
@@ -54,18 +55,18 @@ internal constructor(
     fun successConversationList(): LiveData<List<ConversationItem>> = conversationDao.successConversationList()
 
     fun insertConversation(conversation: Conversation, participants: List<Participant>) {
-        GlobalScope.launch(SINGLE_DB_THREAD) {
-            appDatabase.runInTransaction {
-                conversationDao.insertConversation(conversation)
+        GlobalScope.launch(Dispatchers.IO) {
+            conversationDao.insertConversation(conversation) {
                 participantDao.insertList(participants)
             }
         }
     }
 
     fun syncInsertConversation(conversation: Conversation, participants: List<Participant>) {
-        appDatabase.runInTransaction {
-            conversationDao.insertConversation(conversation)
-            participantDao.insertList(participants)
+        GlobalScope.launch(Dispatchers.IO) {
+            conversationDao.insertConversation(conversation) {
+                participantDao.insertList(participants)
+            }
         }
     }
 
@@ -80,17 +81,17 @@ internal constructor(
 
     fun findMessageById(messageId: String) = messageDao.findMessageById(messageId)
 
-    fun saveDraft(conversationId: String, draft: String) {
-        GlobalScope.launch(SINGLE_DB_THREAD) {
-            conversationDao.saveDraft(conversationId, draft)
-        }
+    suspend fun saveDraft(conversationId: String, draft: String) {
+        conversationDao.saveDraft(conversationId, draft)
     }
 
     fun getConversation(conversationId: String) = conversationDao.getConversation(conversationId)
 
-    suspend fun fuzzySearchMessage(query: String, limit: Int): List<SearchMessageItem> = messageDao.fuzzySearchMessage(query, limit)
+    suspend fun fuzzySearchMessage(query: String, limit: Int): List<SearchMessageItem> =
+        messageDao.fuzzySearchMessage(query, limit)
 
-    fun fuzzySearchMessageDetail(query: String, conversationId: String) = messageDao.fuzzySearchMessageByConversationId(query, conversationId)
+    fun fuzzySearchMessageDetail(query: String, conversationId: String) =
+        messageDao.fuzzySearchMessageByConversationId(query, conversationId)
 
     suspend fun fuzzySearchChat(query: String): List<ChatMinimal> = conversationDao.fuzzySearchChat(query)
 
@@ -99,7 +100,8 @@ internal constructor(
     suspend fun getMediaMessages(conversationId: String): List<MessageItem> =
         messageDao.getMediaMessages(conversationId)
 
-    fun getConversationIdIfExistsSync(recipientId: String) = conversationDao.getConversationIdIfExistsSync(recipientId)
+    fun getConversationIdIfExistsSync(recipientId: String) =
+        conversationDao.getConversationIdIfExistsSync(recipientId)
 
     fun getUnreadMessage(conversationId: String, accountId: String): List<MessageMinimal>? {
         return messageDao.getUnreadMessage(conversationId, accountId)
@@ -116,7 +118,8 @@ internal constructor(
     fun getGroupParticipantsLiveData(conversationId: String) =
         participantDao.getGroupParticipantsLiveData(conversationId)
 
-    suspend fun updateMediaStatus(status: String, messageId: String) = messageDao.updateMediaStatusSuspend(status, messageId)
+    suspend fun updateMediaStatus(status: String, messageId: String) =
+        messageDao.updateMediaStatusSuspend(status, messageId)
 
     fun deleteMessage(id: String) = messageDao.deleteMessage(id)
 
@@ -140,7 +143,8 @@ internal constructor(
 
     suspend fun getRealParticipants(conversationId: String) = participantDao.getRealParticipantsSuspend(conversationId)
 
-    fun getGroupConversationApp(conversationId: String) = appDao.getGroupConversationApp(conversationId)
+    fun getGroupConversationApp(conversationId: String) =
+        appDao.getGroupConversationApp(conversationId)
 
     fun getConversationApp(userId: String?) = appDao.getConversationApp(userId)
 
@@ -153,9 +157,11 @@ internal constructor(
         }
     }
 
-    fun getLimitParticipants(conversationId: String, limit: Int) = participantDao.getLimitParticipants(conversationId, limit)
+    fun getLimitParticipants(conversationId: String, limit: Int) =
+        participantDao.getLimitParticipants(conversationId, limit)
 
-    fun findParticipantByIds(conversationId: String, userId: String) = participantDao.findParticipantByIds(conversationId, userId)
+    fun findParticipantByIds(conversationId: String, userId: String) =
+        participantDao.findParticipantByIds(conversationId, userId)
 
     fun getParticipantsCount(conversationId: String) = participantDao.getParticipantsCount(conversationId)
 
@@ -166,12 +172,15 @@ internal constructor(
     fun getMediaByConversationIdAndCategory(conversationId: String, category: String) = messageDao
         .getMediaByConversationIdAndCategory(conversationId, category)
 
-    suspend fun findMessageIndex(conversationId: String, messageId: String) = messageDao.findMessageIndex(conversationId, messageId)
+    suspend fun findMessageIndex(conversationId: String, messageId: String) =
+        messageDao.findMessageIndex(conversationId, messageId)
 
     fun findUnreadMessagesSync(conversationId: String) = messageDao.findUnreadMessagesSync(conversationId)
 
     fun batchMarkReadAndTake(conversationId: String, userId: String, createdAt: String) {
-        messageDao.batchMarkReadAndTake(conversationId, userId, createdAt)
+        GlobalScope.launch(Dispatchers.IO) {
+            messageDao.batchMarkReadAndTake(conversationId, userId, createdAt)
+        }
     }
 
     fun insertList(it: List<Job>) {
@@ -184,17 +193,20 @@ internal constructor(
             val response = call.body()
             if (response != null && response.isSuccess) {
                 response.data?.let { conversationData ->
-                    val status = if (conversationData.participants.find { Session.getAccountId() == it.userId } != null) {
-                        ConversationStatus.SUCCESS.ordinal
-                    } else {
-                        ConversationStatus.QUIT.ordinal
-                    }
+                    val status =
+                        if (conversationData.participants.find { Session.getAccountId() == it.userId } != null) {
+                            ConversationStatus.SUCCESS.ordinal
+                        } else {
+                            ConversationStatus.QUIT.ordinal
+                        }
                     var ownerId: String = conversationData.creatorId
                     if (conversationData.category == ConversationCategory.CONTACT.name) {
                         ownerId = conversationData.participants.find { it.userId != Session.getAccountId() }!!.userId
                     }
-                    conversationDao.updateConversation(conversationData.conversationId, ownerId, conversationData.category, conversationData.name,
-                        conversationData.announcement, conversationData.muteUntil, conversationData.createdAt, status)
+                    conversationDao.updateConversation(
+                        conversationData.conversationId, ownerId, conversationData.category, conversationData.name,
+                        conversationData.announcement, conversationData.muteUntil, conversationData.createdAt, status
+                    )
                 }
             }
         } catch (e: IOException) {
@@ -205,7 +217,8 @@ internal constructor(
         messageDao.insert(message)
     }
 
-    suspend fun findFirstUnreadMessageId(conversationId: String, userId: String): String? = messageDao.findFirstUnreadMessageId(conversationId, userId)
+    suspend fun findFirstUnreadMessageId(conversationId: String, userId: String): String? =
+        messageDao.findFirstUnreadMessageId(conversationId, userId)
 
     suspend fun findLastMessage(conversationId: String) = messageDao.findLastMessage(conversationId)
 

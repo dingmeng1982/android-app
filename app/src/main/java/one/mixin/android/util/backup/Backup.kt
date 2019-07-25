@@ -5,8 +5,6 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.os.StatFs
 import androidx.annotation.RequiresPermission
-import java.io.File
-import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
@@ -14,8 +12,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import one.mixin.android.Constants
 import one.mixin.android.db.MixinDatabase
-import one.mixin.android.db.runInTransaction
+import one.mixin.android.db.withTransaction
 import one.mixin.android.extension.getBackupPath
+import java.io.File
+import kotlin.coroutines.CoroutineContext
 
 private const val BACKUP_POSTFIX = ".backup"
 
@@ -47,7 +47,7 @@ fun backup(
         val copyPath = "$backupDir${File.separator}$tmpName"
         var result: File? = null
         try {
-            runInTransaction {
+            withTransaction {
                 MixinDatabase.checkPoint()
                 result = dbFile.copyTo(File(copyPath), overwrite = true)
             }

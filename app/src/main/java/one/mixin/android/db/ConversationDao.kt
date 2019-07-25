@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.RoomWarnings
+import androidx.room.Transaction
 import io.reactivex.Maybe
 import io.reactivex.Single
 import one.mixin.android.db.BaseDao.Companion.ESCAPE_SUFFIX
@@ -73,8 +74,9 @@ interface ConversationDao : BaseDao<Conversation> {
     @Query("SELECT c.* FROM conversations c WHERE c.conversation_id = :conversationId")
     fun searchConversationById(conversationId: String): Maybe<Conversation>
 
+    @Transaction
     @Query("UPDATE conversations SET draft = :text WHERE conversation_id = :conversationId")
-    fun saveDraft(conversationId: String, text: String)
+    suspend fun saveDraft(conversationId: String, text: String)
 
     @Query("SELECT c.* FROM conversations c WHERE c.conversation_id = :conversationId")
     fun getConversation(conversationId: String): Conversation?

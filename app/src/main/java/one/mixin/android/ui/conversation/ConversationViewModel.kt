@@ -17,10 +17,6 @@ import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
-import java.io.File
-import java.io.FileInputStream
-import java.util.UUID
-import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -118,6 +114,10 @@ import one.mixin.android.widget.gallery.MimeType
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.toast
 import timber.log.Timber
+import java.io.File
+import java.io.FileInputStream
+import java.util.UUID
+import javax.inject.Inject
 
 class ConversationViewModel
 @Inject
@@ -152,8 +152,9 @@ internal constructor(
 
     fun getConversationById(id: String) = conversationRepository.getConversationById(id)
 
-    fun saveDraft(conversationId: String, text: String) =
+    fun saveDraft(conversationId: String, text: String) = viewModelScope.launch {
         conversationRepository.saveDraft(conversationId, text)
+    }
 
     fun findUserByConversationId(conversationId: String): LiveData<User> =
         userRepository.findUserByConversationId(conversationId)
