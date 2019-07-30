@@ -78,10 +78,8 @@ abstract class MixinDatabase : RoomDatabase() {
 
     companion object {
         private var INSTANCE: MixinDatabase? = null
-        private var READINSTANCE: MixinDatabase? = null
 
         private val lock = Any()
-        private val readlock = Any()
         private var supportSQLiteDatabase: SupportSQLiteDatabase? = null
 
         fun getDatabase(context: Context): MixinDatabase {
@@ -99,18 +97,6 @@ abstract class MixinDatabase : RoomDatabase() {
 
         fun checkPoint() {
             supportSQLiteDatabase?.query("PRAGMA wal_checkpoint(FULL)")?.close()
-        }
-
-        fun getReadDatabase(context: Context): MixinDatabase {
-            synchronized(readlock) {
-                if (READINSTANCE == null) {
-                    READINSTANCE = Room.databaseBuilder(context, MixinDatabase::class.java, DB_NAME)
-                        .addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
-                        .enableMultiInstanceInvalidation()
-                        .build()
-                }
-                return READINSTANCE as MixinDatabase
-            }
         }
 
         private val CALLBACK = object : RoomDatabase.Callback() {

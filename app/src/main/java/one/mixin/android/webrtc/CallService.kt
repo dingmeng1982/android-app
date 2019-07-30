@@ -11,18 +11,11 @@ import com.google.gson.Gson
 import dagger.android.AndroidInjection
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
-import java.util.UUID
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
-import javax.inject.Inject
 import one.mixin.android.Constants
 import one.mixin.android.Constants.ARGS_USER
 import one.mixin.android.api.service.AccountService
 import one.mixin.android.crypto.Base64
 import one.mixin.android.db.MessageDao
-import one.mixin.android.di.type.DatabaseCategory
-import one.mixin.android.di.type.DatabaseCategoryEnum
 import one.mixin.android.extension.nowInUtc
 import one.mixin.android.extension.supportsOreo
 import one.mixin.android.extension.vibrate
@@ -48,6 +41,11 @@ import org.webrtc.PeerConnectionFactory
 import org.webrtc.SessionDescription
 import org.webrtc.StatsReport
 import timber.log.Timber
+import java.util.UUID
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
 class CallService : Service(), PeerConnectionClient.PeerConnectionEvents {
 
@@ -69,7 +67,6 @@ class CallService : Service(), PeerConnectionClient.PeerConnectionEvents {
     @Inject
     lateinit var jobManager: MixinJobManager
     @Inject
-    @field:[DatabaseCategory(DatabaseCategoryEnum.BASE)]
     lateinit var messageDao: MessageDao
     @Inject
     lateinit var accountService: AccountService

@@ -11,8 +11,6 @@ import javax.inject.Inject
 import one.mixin.android.db.JobDao
 import one.mixin.android.db.MessageDao
 import one.mixin.android.db.batchMarkReadAndTake
-import one.mixin.android.di.type.DatabaseCategory
-import one.mixin.android.di.type.DatabaseCategoryEnum
 import one.mixin.android.extension.nowInUtc
 import one.mixin.android.job.NotificationJob.Companion.CONVERSATION_ID
 import one.mixin.android.job.NotificationJob.Companion.IS_PLAIN
@@ -31,7 +29,6 @@ class SendService : IntentService("SendService") {
     @Inject
     lateinit var jobManager: MixinJobManager
     @Inject
-    @field:[DatabaseCategory(DatabaseCategoryEnum.BASE)]
     lateinit var messageDao: MessageDao
     @Inject
     lateinit var jobDao: JobDao

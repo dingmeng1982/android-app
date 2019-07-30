@@ -10,6 +10,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import one.mixin.android.api.request.ConversationRequest
 import one.mixin.android.api.service.ConversationService
+import one.mixin.android.db.AppDao
 import one.mixin.android.db.ConversationDao
 import one.mixin.android.db.JobDao
 import one.mixin.android.db.MessageDao
@@ -18,8 +19,6 @@ import one.mixin.android.db.MixinDatabase
 import one.mixin.android.db.ParticipantDao
 import one.mixin.android.db.batchMarkReadAndTake
 import one.mixin.android.db.insertConversation
-import one.mixin.android.di.type.DatabaseCategory
-import one.mixin.android.di.type.DatabaseCategoryEnum
 import one.mixin.android.util.SINGLE_DB_THREAD
 import one.mixin.android.util.Session
 import one.mixin.android.vo.ChatMinimal
@@ -38,29 +37,21 @@ import one.mixin.android.vo.SearchMessageItem
 class ConversationRepository
 @Inject
 internal constructor(
-    @DatabaseCategory(DatabaseCategoryEnum.BASE)
     private val appDatabase: MixinDatabase,
-    @DatabaseCategory(DatabaseCategoryEnum.READ)
-    private val readAppDatabase: MixinDatabase,
-    @DatabaseCategory(DatabaseCategoryEnum.BASE)
     private val messageDao: MessageDao,
-    @DatabaseCategory(DatabaseCategoryEnum.READ)
-    private val readMessageDao: MessageDao,
-    @DatabaseCategory(DatabaseCategoryEnum.BASE)
     private val conversationDao: ConversationDao,
-    @DatabaseCategory(DatabaseCategoryEnum.READ)
-    private val readConversationDao: ConversationDao,
     private val participantDao: ParticipantDao,
+    private val appDao: AppDao,
     private val jobDao: JobDao,
     private val conversationService: ConversationService
 ) {
 
     @SuppressLint("RestrictedApi")
-    fun getMessages(conversationId: String) = MessageProvider.getMessages(conversationId, readAppDatabase)
+    fun getMessages(conversationId: String) = MessageProvider.getMessages(conversationId, appDatabase)
 
-    fun conversation(): LiveData<List<ConversationItem>> = readConversationDao.conversationList()
+    fun conversation(): LiveData<List<ConversationItem>> = conversationDao.conversationList()
 
-    fun successConversationList(): LiveData<List<ConversationItem>> = readConversationDao.successConversationList()
+    fun successConversationList(): LiveData<List<ConversationItem>> = conversationDao.successConversationList()
 
     fun insertConversation(conversation: Conversation, participants: List<Participant>) {
         GlobalScope.launch(SINGLE_DB_THREAD) {
@@ -79,13 +70,13 @@ internal constructor(
     }
 
     fun getConversationById(conversationId: String): LiveData<Conversation> =
-        readConversationDao.getConversationById(conversationId)
+        conversationDao.getConversationById(conversationId)
 
     fun findConversationById(conversationId: String): Observable<Conversation> = Observable.just(conversationId).map {
-        readConversationDao.findConversationById(conversationId)
+        conversationDao.findConversationById(conversationId)
     }
 
-    fun searchConversationById(conversationId: String) = readConversationDao.searchConversationById(conversationId)
+    fun searchConversationById(conversationId: String) = conversationDao.searchConversationById(conversationId)
 
     fun findMessageById(messageId: String) = messageDao.findMessageById(messageId)
 
@@ -95,23 +86,23 @@ internal constructor(
         }
     }
 
-    fun getConversation(conversationId: String) = readConversationDao.getConversation(conversationId)
+    fun getConversation(conversationId: String) = conversationDao.getConversation(conversationId)
 
-    suspend fun fuzzySearchMessage(query: String, limit: Int): List<SearchMessageItem> = readMessageDao.fuzzySearchMessage(query, limit)
+    suspend fun fuzzySearchMessage(query: String, limit: Int): List<SearchMessageItem> = messageDao.fuzzySearchMessage(query, limit)
 
-    fun fuzzySearchMessageDetail(query: String, conversationId: String) = readMessageDao.fuzzySearchMessageByConversationId(query, conversationId)
+    fun fuzzySearchMessageDetail(query: String, conversationId: String) = messageDao.fuzzySearchMessageByConversationId(query, conversationId)
 
-    suspend fun fuzzySearchChat(query: String): List<ChatMinimal> = readConversationDao.fuzzySearchChat(query)
+    suspend fun fuzzySearchChat(query: String): List<ChatMinimal> = conversationDao.fuzzySearchChat(query)
 
-    suspend fun indexUnread(conversationId: String) = readConversationDao.indexUnread(conversationId)
+    suspend fun indexUnread(conversationId: String) = conversationDao.indexUnread(conversationId)
 
     suspend fun getMediaMessages(conversationId: String): List<MessageItem> =
-        readMessageDao.getMediaMessages(conversationId)
+        messageDao.getMediaMessages(conversationId)
 
-    fun getConversationIdIfExistsSync(recipientId: String) = readConversationDao.getConversationIdIfExistsSync(recipientId)
+    fun getConversationIdIfExistsSync(recipientId: String) = conversationDao.getConversationIdIfExistsSync(recipientId)
 
     fun getUnreadMessage(conversationId: String, accountId: String): List<MessageMinimal>? {
-        return readMessageDao.getUnreadMessage(conversationId, accountId)
+        return messageDao.getUnreadMessage(conversationId, accountId)
     }
 
     fun updateCodeUrl(conversationId: String, codeUrl: String) {
@@ -149,9 +140,9 @@ internal constructor(
 
     suspend fun getRealParticipants(conversationId: String) = participantDao.getRealParticipantsSuspend(conversationId)
 
-    fun getGroupConversationApp(conversationId: String) = readAppDatabase.appDao().getGroupConversationApp(conversationId)
+    fun getGroupConversationApp(conversationId: String) = appDao.getGroupConversationApp(conversationId)
 
-    fun getConversationApp(userId: String?) = readAppDatabase.appDao().getConversationApp(userId)
+    fun getConversationApp(userId: String?) = appDao.getConversationApp(userId)
 
     fun updateAsync(conversationId: String, request: ConversationRequest) =
         conversationService.updateAsync(conversationId, request)
@@ -168,16 +159,16 @@ internal constructor(
 
     fun getParticipantsCount(conversationId: String) = participantDao.getParticipantsCount(conversationId)
 
-    fun getStorageUsage(conversationId: String) = readConversationDao.getStorageUsage(conversationId)
+    fun getStorageUsage(conversationId: String) = conversationDao.getStorageUsage(conversationId)
 
-    fun getConversationStorageUsage() = readConversationDao.getConversationStorageUsage()
+    fun getConversationStorageUsage() = conversationDao.getConversationStorageUsage()
 
-    fun getMediaByConversationIdAndCategory(conversationId: String, category: String) = readMessageDao
+    fun getMediaByConversationIdAndCategory(conversationId: String, category: String) = messageDao
         .getMediaByConversationIdAndCategory(conversationId, category)
 
-    suspend fun findMessageIndex(conversationId: String, messageId: String) = readMessageDao.findMessageIndex(conversationId, messageId)
+    suspend fun findMessageIndex(conversationId: String, messageId: String) = messageDao.findMessageIndex(conversationId, messageId)
 
-    fun findUnreadMessagesSync(conversationId: String) = readMessageDao.findUnreadMessagesSync(conversationId)
+    fun findUnreadMessagesSync(conversationId: String) = messageDao.findUnreadMessagesSync(conversationId)
 
     fun batchMarkReadAndTake(conversationId: String, userId: String, createdAt: String) {
         messageDao.batchMarkReadAndTake(conversationId, userId, createdAt)

@@ -44,8 +44,6 @@ import one.mixin.android.db.FloodMessageDao
 import one.mixin.android.db.JobDao
 import one.mixin.android.db.MessageDao
 import one.mixin.android.db.OffsetDao
-import one.mixin.android.di.type.DatabaseCategory
-import one.mixin.android.di.type.DatabaseCategoryEnum
 import one.mixin.android.di.worker.MixinWorkerFactory
 import one.mixin.android.extension.networkConnected
 import one.mixin.android.job.BaseJob
@@ -62,7 +60,7 @@ import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 
-@Module(includes = [(ViewModelModule::class), (BaseDbModule::class), (ReadDbModule::class)])
+@Module(includes = [(ViewModelModule::class), (BaseDbModule::class)])
 internal class AppModule {
 
     private val LOCALE = Locale.getDefault().language + "-" + Locale.getDefault().country
@@ -248,9 +246,7 @@ internal class AppModule {
     fun provideChatWebSocket(
         okHttp: OkHttpClient,
         app: Application,
-        @DatabaseCategory(DatabaseCategoryEnum.BASE)
         conversationDao: ConversationDao,
-        @DatabaseCategory(DatabaseCategoryEnum.BASE)
         messageDao: MessageDao,
         offsetDao: OffsetDao,
         floodMessageDao: FloodMessageDao,
